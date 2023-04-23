@@ -1,0 +1,465 @@
+---
+title: "STA363Project1"
+output: html_document
+date: "2022-09-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Abtract/ Executive Summary
+
+Dengue fever is difficult to diagnose, especially for children in more rural areas with less access to advanced medical care. With information on 5726 children from Vietnam who are brought into a clinic with symptoms of an illness and test results on dengue fever, we'd like to predict whether a child has dengue fever or not using given information on symptoms and children's personal information. In this project, we have following predictors:
+Y for whether the child has dengue or not, age of the child in years, number of days the child had been sick prior to coming to the doctor, whether the child vomited, whether the child has abdominal pain, whether the children has mucosal bleeding, whether the child has skin bleeding, the child’s temperature in Celsius, the child’s body mass index, the child’s height in cm, the child’s weight in kilograms, whether the child has flush, whether the child has hepatomegaly, and whether the child has rash. To estimate the prediction accuracy for each model, since there is no test data provided, I utilize 80%-20% split and 10-fold CV to create test data for KNN, and 10-fold CV for Logistic Regression. And finally, the logistic regression model is chosen only for the purpose of prediction since it has higher sensitivity compared to the KNN model.
+
+## Section 1: Introduction and Data
+
+Predicting whether a child has dengue fever is critical to better help the clients provide the treatment and save their lives, thus knowing which symptoms matter would be quite helpful. In this study, we look at how to estimate whether a child has dengue fever by examining several predictors: Sex, Age, DayDisease, Vomiting, Adbo, Muco, Skin, Temp, BMI, Height, Weight, Flush, Hepatomegaly, and Rash.
+
+### Data Clearning
+
+```{r, message=FALSE}
+dengueData <- read.csv("~/Desktop/STA363/dengueData.csv")
+library(ggplot2)
+library(ggmosaic)
+library(class)
+```
+
+Before solving the problem that we are interested in, the first thing we need to do is to get the data ready by checking for missing data. For the original dataset, we have 5726 observations and 15 variables
+
+```{r}
+# clean the N/A data
+dengueClean <- na.omit(dengueData)
+```
+
+
+After checking the missing data, we find that the dataset contains no N/A, so we can keep all of our original data, which is still 5726 instances and 15 features.
+
+### Exploratory Data Analysis
+
+Followed the data cleaning process, we should check the general condition of the response variable Y.
+
+```{r}
+# Make a table showing whether Y is imbalanced
+knitr::kable(table(dengueClean$Y), col.names=c("Dengue Fever", "Count") )
+#1698/5712
+```
+
+From the table, we can see that our sample contains 1698 observations of children without dengue fever and 4028 observations of children with dengue fever. There are enough amounts of counts in both outcome levels and the balance is a little skewed to the result that children have dengue, but we still have around 30% of total instances for the less group, which shouldn't be considered a sign of unbalanced classification. Thus, the disparity we encountered in the dependent variable is reasonable and acceptable, and we are ready to visualize those independent variables next.
+
+Then I want to visualize our explanatory variables and select useful features. After simply observing the dataset and considering the contextual meaning, I notice that some of the explanatory variables (Sex, Vomiting, Abdo, Muco, Skin, Flush, Hepatomegaly, Rash) are supposed to be categorical while others (Age, DayDisease, Temp, BMI, Height, Weight) are supposed to be numeric. So next, I'd like to explore the relationship between the eight categorical variables and our response variable Y by mosaic plots because both those predictors and the response variable are categorical.
+
+```{r,warning = FALSE}
+# The package tidyr 1.2.0 generates a function name warning, where unite_() should be unite()
+
+# convert variables types for convenience
+dengueClean$Y <- as.factor(dengueClean$Y)
+dengueClean$Sex <- as.factor(dengueClean$Sex)
+dengueClean$Vomiting <- as.factor(dengueClean$Vomiting)
+dengueClean$Abdo <- as.factor(dengueClean$Abdo)
+dengueClean$Muco <- as.factor(dengueClean$Muco)
+dengueClean$Skin <- as.factor(dengueClean$Skin)
+
+# draw mosaic graphs
+mosaic1 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Sex), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Sex", title = "Figure 1.1: Sex vs. Dengue")
+mosaic2 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Vomiting), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Vomiting", title = "Figure 1.2: Vomiting vs. Dengue")
+mosaic3 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Abdo), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Abdominal pain", title = "Figure 1.3: Abdominal pain vs. Dengue")
+mosaic4 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Muco), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Mucosal bleeding", title = "Figure 1.4: Mucosal bleeding vs. Dengue")
+mosaic5 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Skin), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Skin bleeding", title = "Figure 1.5: Skin bleeding vs. Dengue")
+mosaic6 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Flush), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Flush", title = "Figure 1.6: Flush vs. Dengue")
+mosaic7 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Hepatomegaly), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Hepatomegaly", title = "Figure 1.7: Hepatomegaly vs. Dengue")
+mosaic8 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Rash), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Rash", title = "Figure 1.8: Rash vs. Dengue")
+gridExtra::grid.arrange(mosaic1,mosaic2,mosaic3,mosaic4, ncol = 2, nrow = 2)
+gridExtra::grid.arrange(mosaic5,mosaic6,mosaic7,mosaic8, ncol = 2, nrow = 2)
+```
+
+From Figure 1.1, we notice that the distribution of dengue fever is the same between male and female children, indicating that there is no association between Sex and our response variable. Since Sex will not be a strong predictor for Y, we'd like to exclude Sex in our model building. 
+
+```{r}
+#summary(dengueClean[c(6,7,13,14)])
+```
+From Figure 1.4, Figure 1.5, Figure 1.7, and Figure 1.8, we see that Muco, Skin, Hepatomegaly and Rash have very unbalanced classifications (less than 10% of total counts in less group), despite the differences between the two levels of Y for each of the four variables. Thus, I think it seems to be inappropriate to put the four features in our model.
+
+Then, from Figure 1.2, we can see that there are some differences between Y (having dengue fever and not having dengue fever) for children with vomiting symptom and without vomiting symptom, as the symptom of not vomiting is associated with having dengue fever. 
+From Figure 1.3, we can see that there are more proportion of children having dengue fever but not having abdominal pain, so the symptom of not having abdominal pain seems to be related to children having dengue fever. 
+From Figure 1.6, we can see that moving from having flush to not having flush, the proportion of children have dengue fever increases, so the symptom of not having red cheeks might be associated to children having dengue fever. 
+Since the three features are somehow related to our response variable, we'd like to keep them in our models.
+
+Next, I'd like to observe the numeric features by drawing side by side boxplots for Age, DayDisease, Temp, BMI, Height, Weight.
+
+```{r}
+# draw boxplots
+box1 <- ggplot(dengueClean, aes(x=Y, y=Age)) +  geom_boxplot() + labs(y="Age", x="Dengue", title = "Figure 1.9: Age vs. Dengue")
+box2 <- ggplot(dengueClean, aes(x=Y, y=DayDisease)) +  geom_boxplot() + labs(y="DayDisease", x="Dengue", title = "Figure 1.10: DayDisease vs. Dengue")
+box3 <- ggplot(dengueClean, aes(x=Y, y=Temp)) +  geom_boxplot() + labs(y="Temp", x="Dengue", title = "Figure 1.11: Temp vs. Dengue")
+box4 <- ggplot(dengueClean, aes(x=Y, y=BMI)) +  geom_boxplot() + labs(y="BMI", x="Dengue", title = "Figure 1.12: BMI vs. Dengue")
+box5 <- ggplot(dengueClean, aes(x=Y, y=Height)) +  geom_boxplot() + labs(y="Height", x="Dengue", title = "Figure 1.13: Height vs. Dengue")
+box6 <- ggplot(dengueClean, aes(x=Y, y=Weight)) +  geom_boxplot() + labs(y="Weight.", x="Dengue", title = "Figure 1.14: Weight. vs. Dengue")
+gridExtra::grid.arrange(box1,box2, ncol = 2, nrow = 1)
+gridExtra::grid.arrange(box3,box4, ncol = 2, nrow = 1)
+gridExtra::grid.arrange(box5,box6, ncol = 2, nrow = 1)
+```
+
+From the boxplots we draw, we generally see that younger age, less days of disease, lower temperature, lower BMI, lower height, and lower weight are leading the children more likely to have dengue fever. In other words, for now, we'd like to keep all the six numeric variable in our model.
+
+Now, the data is preprocessed and ready to be used to build models. In conclusion, I decided to use Vomiting, Abdo, Flush, Age, DayDisease, Temp, BMI, Height, and Weight in my model. 
+
+## Section 2: kNN
+
+In this section, we will use an apporoach called k-Nearest Neighbor(kNN) to build predictive models for our dataset. Before we start, we know that kNN only works on numeric features, so I'd like to only keep the six numeric variables and our response variable for KNN models. 
+
+```{r}
+newdengue1 <- dengueClean[, c(2, 3, 8:11, 15)]
+```
+
+### KNN using two features (age and height) only
+
+In order to provide a small example of how KNN works, I create a scatter plot to illustrate how KNN could be applied to this data using age and height only.
+
+```{r}
+ggplot(newdengue1, aes(x=Age, y = Height, color = Y, pch = Y)) + geom_point() + labs(title="Figure 2.1", x = "Age", y = "Height")
+```
+
+On Figure 2.1, we are going to plot the test data and look at certain nearest neighbors of our test data point to predict the result. If the majority of the neighbors have Y=1, then we'd like to predict ${\hat{y}}$ to be 1, and vice versa.
+
+```{r}
+ggplot(newdengue1, aes(x=Age, y = Height, color = Y, pch = Y)) + geom_point() + labs(title="Figure 2.2", x = "Age", y = "Height") + coord_cartesian(ylim=c(80,120), xlim=c(7,9)) + annotate(geom = "point", x = 8, y = 100, colour = "yellow", size = 2) + annotate(geom = "point", x = 8, y = 100, size = 1) + annotate(geom = "text", x = 8.2, y = 100, label = "prediction", hjust = "left")
+```
+
+Using the 3-nearest neighbors, I'd like to predict the child who is age 8 and is 100 cm tall to have dengue fever because we can see from the graph that 2 of 3 of its nearest neighbors are having dengue fever.
+
+### KNN using all the features*
+
+Before moving to KNN using all the features, it's worth noting that variables that are on a large scale will have a much larger effect on the distance between the observations, and hence on the KNN classifier, than variables that are on a small scale. Therefore, before training KNN, we would first standardize all the variables.
+
+```{r}
+standardize <- function(x){
+  return ((x-mean(x))/sd(x))
+}
+```
+
+```{r}
+newdengue1$Age <- standardize(newdengue1$Age)
+newdengue1$DayDisease <- standardize(newdengue1$DayDisease)
+newdengue1$Temp <- standardize(newdengue1$Temp)
+newdengue1$BMI <- standardize(newdengue1$BMI)
+newdengue1$Height <- standardize(newdengue1$Height)
+newdengue1$Weight <- standardize(newdengue1$Weight)
+```
+
+#### Spliting a 20% test and a 80% training
+
+Then, I proceed to assess how well KNN can predict dengue fever using all the features. I first want to create a 20% test, 80% training split of the data with rows randomly assigned to the training or test set, and then use KNN on the split. Notice that this split will reduce training data size and is largely depending on the process of splitting into two subsets.
+
+To choose a proper value for tuning parameter K in KNN, I'd like to test different values of K and then find the K value corresponding to the largest geometric mean of sensitivity and specificity (GMean), to balance between the two metrics. The range of K I would test is 1-100. 
+
+```{r}
+set.seed(99)
+rowTrain1 <- sample(1:5726, 5726*.8, replace = FALSE)
+newTrainKNN1 <- newdengue1[rowTrain1,]
+newTestKNN1 <- newdengue1[-rowTrain1,]
+
+nK <- 100
+
+storageKNN1 <- data.frame("K" = rep(NA,nK), "GMean" = rep(NA,nK), "Sensitivity"= rep(NA,nK), "Specificity" = rep(NA,nK), "ClassificationAccuracy" = rep(NA,nK))
+
+true1 <- which(newTestKNN1$Y == 1)
+true0 <- which(newTestKNN1$Y == 0)
+
+ntrue1 <- length(true1)
+ntrue0 <- length(true0)
+
+for (k in 1:nK){
+  storageKNN1$K[k] <- k
+  knnPred1 <- knn( train = newTrainKNN1[,c(1:6)], test = newTestKNN1[,c(1:6)], cl = newTrainKNN1$Y, k = k)
+  knnPred1 <- as.numeric(knnPred1)-1
+  
+  storageKNN1$Sensitivity[k] <- sum(knnPred1[true1]==1)/ntrue1
+  storageKNN1$Specificity[k] <- sum(knnPred1[true0]==0)/ntrue0
+  storageKNN1$ClassificationAccuracy[k] <- (sum(knnPred1[true1]==1)+sum(knnPred1[true0]==0))/(ntrue1+ntrue0)
+  
+  storageKNN1$GMean[k] <- sqrt(storageKNN1$Sensitivity[k]*storageKNN1$Specificity[k])
+}
+```
+
+```{r}
+# draw KNN graph
+ggplot(storageKNN1, aes(K, GMean)) + geom_line() +
+     labs(caption = paste("Geometric Mean, Red Dashed Line at K = ",
+     which.max(storageKNN1$GMean)), title = "Figure 2.3", y = " ") +
+     geom_vline(xintercept = which.max(storageKNN1$GMean), lty = 2,
+     col = "red")
+```
+```{r, echo = FALSE}
+#storageKNN1$GMean[9]
+#storageKNN1$Sensitivity[9]
+#storageKNN1$Specificity[9]
+#storageKNN1$ClassificationAccuracy[9]
+```
+
+As shown from the graph, I am going to pick K=9 where GMean reaches its peak value, which is 0.562. The corresponding K value of the largest GMean in chosen because GMean is helpful to balance between sensitivity and specificity and provides us with information when both value are at relatively high level and at a balanced state. When K = 9, the sensitivity is 0.886, which means we predict around 88.6% of true dengue correct. The specificity is 0.357, which means we predict around 35.7% of true not dengue correct. The overall classification accuracy is 0.736, meaning that 73.6% of our prediction are correct.
+
+#### 10-fold Cross Validation
+
+Next, since this is generally a medium-size dataset without test data, I'd like to use 10-fold Cross Validation to access predictive accuracy rather than LOOCV because it requires much less time to run and have less variance, which could lead to the problem of overfitting in LOOCV.
+
+To choose a proper value for tuning parameter K in KNN, I'd like to test different values of K and then find the K value corresponding to the largest geometric mean of sensitivity and specificity, like what I did above. The range of K I would test is 1-100. 
+
+```{r}
+n <- nrow(newdengue1)
+nK <- 100
+nfolds <- ceiling(n/10)
+storageKNN2 <- data.frame("K" = rep(NA,nK), "GMean" = rep(NA,nK), "Sensitivity"= rep(NA,nK), "Specificity" = rep(NA,nK), "ClassificationAccuracy" = rep(NA,nK))
+
+pool <- rep(1:10, nfolds)
+set.seed(100)
+folds <- sample(pool,n,replace=FALSE)
+
+true1 <- which(newdengue1$Y == 1)
+true0 <- which(newdengue1$Y == 0)
+
+ntrue1 <- length(true1)
+ntrue0 <- length(true0)
+
+
+for(k in 1:nK){
+  # Step 1: Store K
+  storageKNN2$K[k] <- k
+  InnerStorage <- data.frame("Prediction" = rep(NA,n))
+  
+  for( f in 1:10){
+    # Step 2: Find the Data in Fold f
+    infold <- which(folds == f)
+    # Step 3: Create training and test
+    newTrainKNN2 <- newdengue1[-infold,]
+    newTestKNN2 <- newdengue1[infold,]
+    # Step 4: Make Predictions
+    K_preds <- knn( train = newTrainKNN2[,c(1:6)], test = newTestKNN2[,c(1:6)], cl = newTrainKNN2$Y, k = k)
+    
+    InnerStorage$Prediction[infold]<-as.numeric(K_preds)-1
+  }
+  
+  # Step 5: Compute the Sensitivity and Specificity and Accuracy
+    storageKNN2$Sensitivity[k] <- sum(InnerStorage$Prediction[true1]==1)/ntrue1
+    storageKNN2$Specificity[k] <- sum(InnerStorage$Prediction[true0]==0)/ntrue0
+    storageKNN2$ClassificationAccuracy[k] <- (sum(InnerStorage$Prediction[true1]==1)+sum(InnerStorage$Prediction[true0]))/(ntrue1+ntrue0)
+
+  # Step 6: Compute the GMean
+  storageKNN2$GMean[k] <- sqrt(storageKNN2$Sensitivity[k]*storageKNN2$Specificity[k])
+}
+```
+
+```{r}
+# draw KNN graph
+ggplot(storageKNN2, aes(K, GMean)) + geom_line() +
+     labs(caption = paste("Geometric Mean, Red Dashed Line at K = ",
+     which.max(storageKNN2$GMean)), title = "Figure 2.4", y = " ") +
+     geom_vline(xintercept = which.max(storageKNN2$GMean), lty = 2,
+     col = "red")
+```
+```{r, echo = FALSE}
+#storageKNN2$GMean[7]
+#storageKNN2$Sensitivity[7]
+#storageKNN2$Specificity[7]
+#storageKNN2$ClassificationAccuracy[7]
+```
+
+As shown from the graph, I am going to pick K=7 where GMean reaches its peak value, which is 0 554. The corresponding K value of the largest GMean in chosen because GMean is helpful to balance between sensitivity and specificity and provides us with information when both value are at relatively high level and at a balanced state. When K = 7, the sensitivity is 0.854, which means we predict around 85.4% of true dengue correct. The specificity is 0.360, which means we predict around 36.0% of true not dengue correct. The overall classification accuracy is 0.790, meaning that 79.0% of our prediction are correct.
+
+As a result, I recommend the client use 10-fold CV in practice because for assessing predictive accuracy because it requires much less time to run and have less variance, which could lead to the problem of overfitting in LOOCV.
+
+
+## Section 3: Logistic Regression
+
+Then, I'd like to move to logistic regression which could include both categorical predictors and numeric predictors. According to our EDA, I'd like to keep Vomiting, Abdo, Flush, Age, DayDisease, Temp, BMI, Height, and Weight in this model.
+
+```{r}
+newdengue2 <- dengueClean[, c(2:5,8:12,15)]
+```
+
+```{r}
+# function to create empirical logit plot
+emplogitPlot <- function(x, y, binsize = NULL, ci = FALSE, probit = FALSE,
+prob = FALSE, main = NULL, xlab = "", ylab = "", lowess.in = FALSE){
+  # x         vector with values of the independent variable
+  # y         vector of binary responses
+  # binsize   integer value specifying bin size (optional)
+  # ci        logical value indicating whether to plot approximate
+  #           confidence intervals (not supported as of 02/08/2015)
+  # probit    logical value indicating whether to plot probits instead
+  #           of logits
+  # prob      logical value indicating whether to plot probabilities
+  #           without transforming
+  #
+  # the rest are the familiar plotting options
+  
+  if(class(y) =="character"){
+   y <- as.numeric(as.factor(y))-1
+   }
+  
+  if (length(x) != length(y))
+    stop("x and y lengths differ")
+  if (any(y < 0 | y > 1))
+    stop("y not between 0 and 1")
+  if (length(x) < 100 & is.null(binsize))
+    stop("Less than 100 observations: specify binsize manually")
+  
+  if (is.null(binsize)) binsize = min(round(length(x)/10), 50)
+  
+  if (probit){
+    link = qnorm
+    if (is.null(main)) main = "Empirical probits"
+  } else {
+    link = function(x) log(x/(1-x))
+    if (is.null(main)) main = "Empirical logits"
+  }
+  
+  sort = order(x)
+  x = x[sort]
+  y = y[sort]
+  a = seq(1, length(x), by=binsize)
+  b = c(a[-1] - 1, length(x))
+  
+  prob = xmean = ns = rep(0, length(a)) # ns is for CIs
+  for (i in 1:length(a)){
+    range = (a[i]):(b[i])
+    prob[i] = mean(y[range])
+    xmean[i] = mean(x[range])
+    ns[i] = b[i] - a[i] + 1 # for CI 
+  }
+  
+  extreme = (prob == 1 | prob == 0)
+  prob[prob == 0] = min(prob[!extreme])
+  prob[prob == 1] = max(prob[!extreme])
+  
+  g = link(prob) # logits (or probits if probit == TRUE)
+  
+  linear.fit = lm(g[!extreme] ~ xmean[!extreme])
+  b0 = linear.fit$coef[1]
+  b1 = linear.fit$coef[2]
+  
+  loess.fit = loess(g[!extreme] ~ xmean[!extreme])
+  
+  plot(xmean, g, main=main, xlab=xlab, ylab=ylab)
+  abline(b0,b1)
+  if(lowess.in ==TRUE){
+  lines(loess.fit$x, loess.fit$fitted, lwd=2, lty=2)
+  }
+}
+```
+
+Before building the logistic regression, I need to check the 4 assumptions Firstly, since the response variable Y, which is whether the child has dengue fever or not, has exactly two levels, so the condition for binary response variable is satisfied. 
+Secondly, we can assume the randomness and the independence conditions are fulfilled although we have no information on how the data was collected, but since each child is independent, we default to this condition being correct.
+
+Thirdly, we'd like to check multicollinearity for numeric variables.
+
+```{r}
+correlation <- cor(newdengue2[, c(1:2,5:8)])
+knitr::kable(round(correlation, 2))
+```
+
+From the table above, we can see that Age, Height, and Weight show strong correlations larger than 0.7 with each other, so after excluding Height and Weight in our logistic regression model, this condition is also satisfied.(why keep ages rather than height and weight??)
+
+```{r}
+newdengue2 <- newdengue2[, -c(7,8)]
+```
+
+Lastly, we'd like to check the linearity of independent numeric variables and log odds of (what) by drawing the empirical logit plot. We only need to check on Age, DayDisease, Temp, and BMI because Height and Weight are removed for being highly-correlated with Age.
+
+```{r}
+par(mfrow=c(2,2))
+
+# draw empirical logit plots
+emplogit1 <- emplogitPlot(x=newdengue2$Age, y=as.numeric(newdengue2$Y)-1, 
+             xlab = "Age", 
+             ylab = "Log Odds of Having Dengue", 
+             main = "Figure 3.1")
+emplogit1 <- emplogitPlot(x=newdengue2$DayDisease, y=as.numeric(newdengue2$Y)-1, 
+             xlab = "Days III", 
+             ylab = "Log Odds of Having Dengue", 
+             main = "Figure 3.2")
+emplogit1 <- emplogitPlot(x=newdengue2$Temp, y=as.numeric(newdengue2$Y)-1, 
+             xlab = "Temp", 
+             ylab = "Log Odds of Having Dengue", 
+             main = "Figure 3.3")
+emplogit1 <- emplogitPlot(x=newdengue2$BMI, y=as.numeric(newdengue2$Y)-1, 
+             xlab = "BMI", 
+             ylab = "Log Odds of Having Dengue", 
+             main = "Figure 3.4")
+
+```
+
+From Figure 3.1, we can see that there is a strong negative linear relationship between and Age and log odds of Y. 
+From Figure 3.2, we can see that although DayDisease as a numeric variable only has three level of values, the graph still shows a moderate negative linear relationship between the number of days of disease and the log odds of Y.
+From Figure 3.3, we can see that there exists a moderate negative linear relationship between Temperature and log odds of Y.
+From Figure 3.4, we also find a moderate negative relationship between BMI and log odds of Y.
+
+Thus, after visualizing the relationship between numeric predictors and the log odds of our response variables, we find that all four variables show some linearity and we decide not to make other transformation. So the last assumption is fulfilled, and we are good to keep all the four numeric predictors. In conclusion, I would use Vomiting, Abdo, Flush, Age, DayDisease, Temp, and BMI in the following model.
+
+Our model should be:
+
+Step 1: $$Y_i \sim Bernoulli( \pi_i)$$
+
+Step 2: $$log\left(\frac{{\pi_i}}{1-{\pi_i}}\right) = \beta_0 + \beta_1Age_i + \beta_2DayDisease_i + \beta_3Vomiting.2_i + \beta_4Abdo.2_i + \beta_5Temp_i + \beta_6BMI_i + \beta_7Flush.TRUE_i$$
+
+```{r}
+m1 <- glm( Y ~ Age + DayDisease + Vomiting + Abdo + Temp + BMI + Flush, data = newdengue2, family = binomial)
+#summary(m1)
+```
+After fitting the model, the regression line should be:
+
+$$log\left(\frac{\hat{\pi_i}}{1-\hat{\pi_i}}\right) = 11.086 - 0.213Age_i - 0.328DayDisease_i + 0.328Vomiting2_i + 0.104Abdo2_i - 0.195Temp_i - 0.039BMI_i + 0.721Flush.TRUE_i$$
+```{r}
+#6961.7-6048.7
+```
+
+This model with the predictors decided in our EDA has a Chi-Square value of 913 with 7 degrees of freedom, so it will have a very small p-value, indicating that the model is useful for predicting the probability of the children having dengue fever with given predictors. Besides, Abdo's p value is relatively large, so it may be insignificant. The rest of the predictors have p-values much smaller than 0,05, so I consider them to be significant predictors.
+
+After discussing about the association of the features in our logistic regression model with our response variable Y, next we are looking at how well it predicts. Since there is no test data provided, we want to choose 10-fold CV with the same reason we listed in our KNN models to help us assess this model's ability to predict. In this case, we'd like to choose the threshold to be 0.5, then for probabilities greater than 0.5, we predict Y to be 1 and otherwise we predict it to be 0.
+
+```{r}
+# Determine folds
+n <- nrow(newdengue2)
+pool <- rep(1:10, ceiling(n/10))
+
+# Assign rows to folds
+set.seed(99)
+folds <- sample(pool,n)
+
+storageLog <- data.frame("probs" = rep(NA,n), "preds" = rep(NA,n))
+
+# Run 10-fold CV
+for( k in 1:10){
+  # Create test and training
+  infold <- which(folds==k)
+  testLog   <- newdengue2[infold,]
+  trainLog  <- newdengue2[-infold, ]
+  
+  # Train the model
+  mTrained <- glm( Y ~ Age + DayDisease + Vomiting + Abdo + Temp + BMI + Flush, data = trainLog, family = binomial)
+  
+  # Estimate the probabilities
+  storageLog$probs[infold]<- predict(mTrained, newdata = testLog, type = "resp")
+  
+  # Create the predictions
+  storageLog$preds[infold] <- ifelse(storageLog$probs[infold] > .5, 1, 0)
+}
+
+knitr::kable(table(storageLog$preds, newdengue2$Y), caption= "Figure 3.5: Confusion Matrix for 10-folds CV for Logistic Regression", col = c("True Not Dengue", "True Dengue"))
+```
+$$Sensitivity = \frac{True~Dengue~and~Predicted~Dengue}{True~Dengue} = \frac{3675}{3675+353} \approx 91.2%$$
+$$Specificity = \frac{True~Not~Dengue~and~Predicted~Not~Dengue}{True~Not~Dengue} = \frac{565}{565+1133} \approx 33.3\%$$
+$$Classification~Accuracy = \frac{Corret~Predictions}{Total} = \frac{565+3675}{5726} \approx 74.0\%$$
+Thus, by using Logistic Regression and setting threshold as 0.5, we predict around 91.2% of true dengue correct, and around 33.3% of true not dengue correct. The overall classification accuracy means that 74.0% of our prediction are correct.
+
+## Section 4: Discussion
+
+|                     | Sensitivity | Specificity | Accuracy |
+|:--------------------|:-----------:|:-----------:|:--------:|
+| KNN(split)          | 88.6%       | 35.7%       | 73.6%    |
+| KNN(10-fold)        | 83.4%       | 36.9%       | 79.0%    |
+| Logistic Regression | 91.2%       | 33.3%       | 74.0%    |
+
+Since the client wants to choose a model just for prediction, I would recommend the logistic regression, because it has the highest sensitivity, which is really important in this case predicting children whether have dengue fever or not. It has the lowest specificity and the second accuracy, but the two metrics are still acceptable. (why choose purely based on sensitivity?)
+

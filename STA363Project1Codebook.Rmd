@@ -1,0 +1,362 @@
+---
+title: "STA363Project1"
+output: html_document
+date: "2022-09-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r, message=FALSE}
+dengueData <- read.csv("~/Downloads/dengueData.csv")
+library(ggplot2)
+library(ggmosaic)
+library(class)
+```
+
+
+```{r}
+# clean the N/A data
+dengueClean <- na.omit(dengueData)
+```
+
+
+```{r}
+# Make a table showing whether Y is imbalanced
+knitr::kable(table(dengueClean$Y), col.names=c("Dengue Fever", "Count") )
+#1698/5712
+```
+
+```{r}
+# The package tidyr 1.2.0 generates a function name warning, where unite_() should be unite()
+
+# convert variables types for convenience
+dengueClean$Y <- as.factor(dengueClean$Y)
+dengueClean$Sex <- as.factor(dengueClean$Sex)
+dengueClean$Vomiting <- as.factor(dengueClean$Vomiting)
+dengueClean$Abdo <- as.factor(dengueClean$Abdo)
+dengueClean$Muco <- as.factor(dengueClean$Muco)
+dengueClean$Skin <- as.factor(dengueClean$Skin)
+
+# draw mosaic graphs
+mosaic1 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Sex), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Sex", title = "Figure 1.1: Sex vs. Dengue")
+mosaic2 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Vomiting), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Vomiting", title = "Figure 1.2: Vomiting vs. Dengue")
+mosaic3 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Abdo), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Abdominal pain", title = "Figure 1.3: Abdominal pain vs. Dengue")
+mosaic4 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Muco), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Mucosal bleeding", title = "Figure 1.4: Mucosal bleeding vs. Dengue")
+mosaic5 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Skin), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Skin bleeding", title = "Figure 1.5: Skin bleeding vs. Dengue")
+mosaic6 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Flush), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Flush", title = "Figure 1.6: Flush vs. Dengue")
+mosaic7 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Hepatomegaly), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Hepatomegaly", title = "Figure 1.7: Hepatomegaly vs. Dengue")
+mosaic8 <- ggplot(data = dengueClean) + geom_mosaic(aes(x=product(Y, Rash), fill=Y)) + theme_mosaic() + labs(y="Dengue", x="Rash", title = "Figure 1.8: Rash vs. Dengue")
+gridExtra::grid.arrange(mosaic1,mosaic2,mosaic3,mosaic4, ncol = 2, nrow = 2)
+gridExtra::grid.arrange(mosaic5,mosaic6,mosaic7,mosaic8, ncol = 2, nrow = 2)
+```
+
+
+```{r}
+#summary(dengueClean[c(6,7,13,14)])
+```
+
+
+```{r}
+# draw boxplots
+box1 <- ggplot(dengueClean, aes(x=Y, y=Age)) +  geom_boxplot() + labs(y="Age", x="Dengue", title = "Figure 1.9: Age vs. Dengue")
+box2 <- ggplot(dengueClean, aes(x=Y, y=DayDisease)) +  geom_boxplot() + labs(y="DayDisease", x="Dengue", title = "Figure 1.10: DayDisease vs. Dengue")
+box3 <- ggplot(dengueClean, aes(x=Y, y=Temp)) +  geom_boxplot() + labs(y="Temp", x="Dengue", title = "Figure 1.11: Temp vs. Dengue")
+box4 <- ggplot(dengueClean, aes(x=Y, y=BMI)) +  geom_boxplot() + labs(y="BMI", x="Dengue", title = "Figure 1.12: BMI vs. Dengue")
+box5 <- ggplot(dengueClean, aes(x=Y, y=Height)) +  geom_boxplot() + labs(y="Height", x="Dengue", title = "Figure 1.13: Height vs. Dengue")
+box6 <- ggplot(dengueClean, aes(x=Y, y=Weight)) +  geom_boxplot() + labs(y="Weight.", x="Dengue", title = "Figure 1.14: Weight. vs. Dengue")
+gridExtra::grid.arrange(box1,box2, ncol = 2, nrow = 1)
+gridExtra::grid.arrange(box3,box4, ncol = 2, nrow = 1)
+gridExtra::grid.arrange(box5,box6, ncol = 2, nrow = 1)
+```
+
+
+
+```{r}
+newdengue1 <- dengueClean[, c(2, 3, 8:11, 15)]
+```
+
+
+```{r}
+ggplot(newdengue1, aes(x=Age, y = Height, color = Y, pch = Y)) + geom_point() + labs(title="Figure 2.1", x = "Age", y = "Height")
+```
+
+
+```{r}
+ggplot(newdengue1, aes(x=Age, y = Height, color = Y, pch = Y)) + geom_point() + labs(title="Figure 2.2", x = "Age", y = "Height") + coord_cartesian(ylim=c(80,120), xlim=c(7,9)) + annotate(geom = "point", x = 8, y = 100, colour = "yellow", size = 2) + annotate(geom = "point", x = 8, y = 100, size = 1) + annotate(geom = "text", x = 8.2, y = 100, label = "prediction", hjust = "left")
+```
+
+
+```{r}
+standardize <- function(x){
+  return ((x-mean(x))/sd(x))
+}
+```
+
+```{r}
+newdengue1$Age <- standardize(newdengue1$Age)
+newdengue1$DayDisease <- standardize(newdengue1$DayDisease)
+newdengue1$Temp <- standardize(newdengue1$Temp)
+newdengue1$BMI <- standardize(newdengue1$BMI)
+newdengue1$Height <- standardize(newdengue1$Height)
+newdengue1$Weight <- standardize(newdengue1$Weight)
+```
+
+
+```{r}
+set.seed(99)
+rowTrain1 <- sample(1:5726, 5726*.8, replace = FALSE)
+newTrainKNN1 <- newdengue1[rowTrain1,]
+newTestKNN1 <- newdengue1[-rowTrain1,]
+
+nK <- 100
+
+storageKNN1 <- data.frame("K" = rep(NA,nK), "GMean" = rep(NA,nK), "Sensitivity"= rep(NA,nK), "Specificity" = rep(NA,nK), "ClassificationAccuracy" = rep(NA,nK))
+
+true1 <- which(newTestKNN1$Y == 1)
+true0 <- which(newTestKNN1$Y == 0)
+
+ntrue1 <- length(true1)
+ntrue0 <- length(true0)
+
+for (k in 1:nK){
+  storageKNN1$K[k] <- k
+  knnPred1 <- knn( train = newTrainKNN1[,c(1:6)], test = newTestKNN1[,c(1:6)], cl = newTrainKNN1$Y, k = k)
+  knnPred1 <- as.numeric(knnPred1)-1
+  
+  storageKNN1$Sensitivity[k] <- sum(knnPred1[true1]==1)/ntrue1
+  storageKNN1$Specificity[k] <- sum(knnPred1[true0]==0)/ntrue0
+  storageKNN1$ClassificationAccuracy[k] <- (sum(knnPred1[true1]==1)+sum(knnPred1[true0]==0))/(ntrue1+ntrue0)
+  
+  storageKNN1$GMean[k] <- sqrt(storageKNN1$Sensitivity[k]*storageKNN1$Specificity[k])
+}
+```
+
+```{r}
+# draw KNN graph
+ggplot(storageKNN1, aes(K, GMean)) + geom_line() +
+     labs(caption = paste("Geometric Mean, Red Dashed Line at K = ",
+     which.max(storageKNN1$GMean)), title = "Figure 2.2", y = " ") +
+     geom_vline(xintercept = which.max(storageKNN1$GMean), lty = 2,
+     col = "red")
+```
+```{r, echo = FALSE}
+#storageKNN1$GMean[9]
+#storageKNN1$Sensitivity[9]
+#storageKNN1$Specificity[9]
+#storageKNN1$ClassificationAccuracy[9]
+```
+
+
+```{r}
+n <- nrow(newdengue1)
+nK <- 100
+nfolds <- ceiling(n/10)
+storageKNN2 <- data.frame("K" = rep(NA,nK), "GMean" = rep(NA,nK), "Sensitivity"= rep(NA,nK), "Specificity" = rep(NA,nK), "ClassificationAccuracy" = rep(NA,nK))
+
+pool <- rep(1:10, nfolds)
+set.seed(100)
+folds <- sample(pool,n,replace=FALSE)
+
+true1 <- which(newdengue1$Y == 1)
+true0 <- which(newdengue1$Y == 0)
+
+ntrue1 <- length(true1)
+ntrue0 <- length(true0)
+
+
+for(k in 1:nK){
+  # Step 1: Store K
+  storageKNN2$K[k] <- k
+  InnerStorage <- data.frame("Prediction" = rep(NA,n))
+  
+  for( f in 1:10){
+    # Step 2: Find the Data in Fold f
+    infold <- which(folds == f)
+    # Step 3: Create training and test
+    newTrainKNN2 <- newdengue1[-infold,]
+    newTestKNN2 <- newdengue1[infold,]
+    # Step 4: Make Predictions
+    K_preds <- knn( train = newTrainKNN2[,c(1:6)], test = newTestKNN2[,c(1:6)], cl = newTrainKNN2$Y, k = k)
+    
+    InnerStorage$Prediction[infold]<-as.numeric(K_preds)-1
+  }
+  
+  # Step 5: Compute the Sensitivity and Specificity and Accuracy
+    storageKNN2$Sensitivity[k] <- sum(InnerStorage$Prediction[true1]==1)/ntrue1
+    storageKNN2$Specificity[k] <- sum(InnerStorage$Prediction[true0]==0)/ntrue0
+    storageKNN2$ClassificationAccuracy[k] <- (sum(InnerStorage$Prediction[true1]==1)+sum(InnerStorage$Prediction[true0]))/(ntrue1+ntrue0)
+
+  # Step 6: Compute the GMean
+  storageKNN2$GMean[k] <- sqrt(storageKNN2$Sensitivity[k]*storageKNN2$Specificity[k])
+}
+```
+
+```{r}
+# draw KNN graph
+ggplot(storageKNN2, aes(K, GMean)) + geom_line() +
+     labs(caption = paste("Geometric Mean, Red Dashed Line at K = ",
+     which.max(storageKNN2$GMean)), title = "Figure 2.3", y = " ") +
+     geom_vline(xintercept = which.max(storageKNN2$GMean), lty = 2,
+     col = "red")
+```
+```{r, echo = FALSE}
+#storageKNN2$GMean[7]
+#storageKNN2$Sensitivity[7]
+#storageKNN2$Specificity[7]
+#storageKNN2$ClassificationAccuracy[7]
+```
+
+
+```{r}
+newdengue2 <- dengueClean[, c(2:5,8:12,15)]
+```
+
+```{r}
+# function to create empirical logit plot
+emplogitPlot <- function(x, y, binsize = NULL, ci = FALSE, probit = FALSE,
+prob = FALSE, main = NULL, xlab = "", ylab = "", lowess.in = FALSE){
+  # x         vector with values of the independent variable
+  # y         vector of binary responses
+  # binsize   integer value specifying bin size (optional)
+  # ci        logical value indicating whether to plot approximate
+  #           confidence intervals (not supported as of 02/08/2015)
+  # probit    logical value indicating whether to plot probits instead
+  #           of logits
+  # prob      logical value indicating whether to plot probabilities
+  #           without transforming
+  #
+  # the rest are the familiar plotting options
+  
+  if(class(y) =="character"){
+   y <- as.numeric(as.factor(y))-1
+   }
+  
+  if (length(x) != length(y))
+    stop("x and y lengths differ")
+  if (any(y < 0 | y > 1))
+    stop("y not between 0 and 1")
+  if (length(x) < 100 & is.null(binsize))
+    stop("Less than 100 observations: specify binsize manually")
+  
+  if (is.null(binsize)) binsize = min(round(length(x)/10), 50)
+  
+  if (probit){
+    link = qnorm
+    if (is.null(main)) main = "Empirical probits"
+  } else {
+    link = function(x) log(x/(1-x))
+    if (is.null(main)) main = "Empirical logits"
+  }
+  
+  sort = order(x)
+  x = x[sort]
+  y = y[sort]
+  a = seq(1, length(x), by=binsize)
+  b = c(a[-1] - 1, length(x))
+  
+  prob = xmean = ns = rep(0, length(a)) # ns is for CIs
+  for (i in 1:length(a)){
+    range = (a[i]):(b[i])
+    prob[i] = mean(y[range])
+    xmean[i] = mean(x[range])
+    ns[i] = b[i] - a[i] + 1 # for CI 
+  }
+  
+  extreme = (prob == 1 | prob == 0)
+  prob[prob == 0] = min(prob[!extreme])
+  prob[prob == 1] = max(prob[!extreme])
+  
+  g = link(prob) # logits (or probits if probit == TRUE)
+  
+  linear.fit = lm(g[!extreme] ~ xmean[!extreme])
+  b0 = linear.fit$coef[1]
+  b1 = linear.fit$coef[2]
+  
+  loess.fit = loess(g[!extreme] ~ xmean[!extreme])
+  
+  plot(xmean, g, main=main, xlab=xlab, ylab=ylab)
+  abline(b0,b1)
+  if(lowess.in ==TRUE){
+  lines(loess.fit$x, loess.fit$fitted, lwd=2, lty=2)
+  }
+}
+```
+
+
+```{r}
+correlation <- cor(newdengue2[, c(1:2,5:8)])
+round(correlation, 2)
+```
+
+
+```{r}
+newdengue2 <- newdengue2[, -c(7,8)]
+```
+
+```{r}
+par(mfrow=c(2,2))
+
+# draw empirical logit plots
+emplogit1 <- emplogitPlot(x=newdengue2$Age, y=as.numeric(newdengue2$Y)-1, 
+             xlab = "Age", 
+             ylab = "Log Odds of Having Dengue", 
+             main = "Figure 3.1")
+emplogit1 <- emplogitPlot(x=newdengue2$DayDisease, y=as.numeric(newdengue2$Y)-1, 
+             xlab = "DayDisease", 
+             ylab = "Log Odds of Having Dengue", 
+             main = "Figure 3.2")
+emplogit1 <- emplogitPlot(x=newdengue2$Temp, y=as.numeric(newdengue2$Y)-1, 
+             xlab = "Temp", 
+             ylab = "Log Odds of Having Dengue", 
+             main = "Figure 3.3")
+emplogit1 <- emplogitPlot(x=newdengue2$BMI, y=as.numeric(newdengue2$Y)-1, 
+             xlab = "BMI", 
+             ylab = "Log Odds of Having Dengue", 
+             main = "Figure 3.4")
+
+```
+
+
+```{r}
+m1 <- glm( Y ~ Age + DayDisease + Vomiting + Abdo + Temp + BMI + Flush, data = newdengue2, family = binomial)
+#summary(m1)
+```
+
+```{r}
+#6961.7-6048.7
+```
+
+
+```{r}
+# Determine folds
+n <- nrow(newdengue2)
+pool <- rep(1:10, ceiling(n/10))
+
+# Assign rows to folds
+set.seed(99)
+folds <- sample(pool,n)
+
+storageLog <- data.frame("probs" = rep(NA,n), "preds" = rep(NA,n))
+
+# Run 10-fold CV
+for( k in 1:10){
+  # Create test and training
+  infold <- which(folds==k)
+  testLog   <- newdengue2[infold,]
+  trainLog  <- newdengue2[-infold, ]
+  
+  # Train the model
+  mTrained <- glm( Y ~ Age + DayDisease + Vomiting + Abdo + Temp + BMI + Flush, data = trainLog, family = binomial)
+  
+  # Estimate the probabilities
+  storageLog$probs[infold]<- predict(mTrained, newdata = testLog, type = "resp")
+  
+  # Create the predictions
+  storageLog$preds[infold] <- ifelse(storageLog$probs[infold] > .5, 1, 0)
+}
+
+knitr::kable(table(storageLog$preds, newdengue2$Y), caption= "Figure 3.5: Confusion Matrix for 10-folds CV for Logistic Regression", col = c("True Not Dengue", "True Dengue"))
+```
